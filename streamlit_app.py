@@ -1,49 +1,29 @@
-# Code refactored from https://docs.streamlit.io/knowledge-base/tutorials/build-conversational-apps
-
-import openai
 import streamlit as st
+from openai import OpenAI
 
 with st.sidebar:
-    st.title('🤖💬 OpenAI Chatbot')
-    if 'OPENAI_API_KEY' in st.secrets:
-        st.success('API key already provided!', icon='✅')
-        openai_api_key = st.secrets['OPENAI_API_KEY']
-    else:
-        openai_api_key = st.text_input('Enter OpenAI API token:', type='password')
-        if not (openai_api_key.startswith('sk-') and len(openai_api_key)==51):
-            st.warning('Please enter your credentials!', icon='⚠️')
-        else:
-            st.success('Proceed to entering your prompt message!', icon='👉')
+    openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
+    "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
+    "[View the source code](https://github.com/streamlit/llm-examples/blob/main/Chatbot.py)"
+    "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/llm-examples?quickstart=1)"
+
+st.title("💬 Chatbot")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
 
-if prompt := st.chat_input("What is up?"):
-    client = openai(api_key=openai_api_key)
+if prompt := st.chat_input():
+    if not openai_api_key:
+        st.info("Please add your OpenAI API key to continue.")
+        st.stop()
+
+    client = OpenAI(api_key=openai_api_key)
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
     response = client.chat.completions.create(model="gpt-3.5-turbo", messages=st.session_state.messages)
     msg = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": msg})
     st.chat_message("assistant").write(msg)
-
-    '''
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
-        for response in OpenAI.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": m["role"], "content": m["content"]}
-                      for m in st.session_state.messages], stream=True):
-            full_response += response.choices[0].delta.get("content", "")
-            message_placeholder.markdown(full_response + "▌")
-        message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
-    '''
